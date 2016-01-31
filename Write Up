@@ -1,0 +1,60 @@
+---
+title: "Prediction Assignment Writeup"
+output: html_document
+---
+
+## Background
+Personal acelerometers have become increasingly popular for tracking activity levels for individuals with a wide variety of athletic background. In perticular the article "Qualitative Activity Recognition of Weight Lifting Exercises" (Velloso et al.) utilized a variety of accelerometers to quantify how well perticapents were able to complete excercises. Using the data collected for this study I was able to create a model to accuratly predict how an exercise was performed based on reedings from personal accelerometers.
+
+### The Data
+The data I used is available from http://groupware.les.inf.puc-rio.br/har along with a more detailed description of the study. After downloading the data and creating a training partition, I pull up the summary of the data frame so that I can begin to get an understanding of the data.
+
+```{r, }
+library(caret)
+datafile<-read.csv("pml-training.csv")
+set.seed(117)
+inTrain <- createDataPartition(y=datafile$classe, p=0.60, list=FALSE)
+training <- datafile[inTrain,]
+testing <- datafile[-inTrain,]
+example1<-summary(training$var_pitch_belt)
+example2<-summary(training$avg_yaw_belt)
+example1
+example2
+```
+In the summary I noticed that several of the columns included empty or NA values. In particular I noticed that for each instance there were 11521 missing or NA values which indicated that perhaps that these values were all omited in the same rows so I decided to eliminate any column containing an omited value.
+```{r}
+key1<-is.na(datafile[1,])
+training1<- training[,!key1]
+key2<- training1[1,] == ""
+training2 <- training1[,!key2]
+dim(training2)
+```
+The "keys" were kept to ensure the same modifications can be made to the test sets. Finaly, the first 7 columns of the lates data frame consist of subject identifiers and timestamps:
+```{r, echo=FALSE}
+head(training2[,1:7])
+```
+Which are independent of the way the excercise is completed since each participant completed each excercise each way. THerefore, I elimintated these columns from the data.
+```{r}
+key3<- 8:60
+training3<-training2[,key3]
+dim(training3)
+```
+Finanly, I use this cleaned data set to compile a model to predict the classe based on the other variables.
+```{r, cache=TRUE}
+modelfit <- train(classe ~.,data=training3)
+```
+
+### Results
+Looking at our model:
+```{r}
+modelfit
+```
+we see that we achieved 98.71% accuracy within are training set. By formatting and testing the testing set we have
+```{r}
+ testing1<-testing[,!key1]
+testing2<-testing1[,!key2]
+testing3<-testing2[,key3]
+serror<-predict(modelfit, testing3)
+confusionMatrix(serror, testing$classe)
+```
+And so w should be able to expect a 99% accuracy out of sample.
